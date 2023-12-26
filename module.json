@@ -1,0 +1,19 @@
+{
+	"name": "Operator",
+	"crud": {
+		"get": ["", "operator"],
+		"unique": ["url"],
+		"update": [
+			{
+				"keys": ["name", "description", "data", "domain", "author", "theme"]
+			},
+			{
+				"name": "operator",
+				"keys": "variables"
+			}
+		],
+		"fetch": ["operator"],
+		"delete": [""]
+	},
+	"dependencies": {}
+}
