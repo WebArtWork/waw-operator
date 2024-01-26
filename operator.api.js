@@ -1,46 +1,18 @@
 module.exports = async (waw) => {
-	const templateJson = waw.readJson(process.cwd() + '/template/template.json');
-	const docs = await waw.Operator.find({});
-	if (waw.config.land && !docs.find(d=>d.domain === waw.config.land)) {
-		const operator = await waw.Operator.create({
-			variables: templateJson.variables,
-			domain: waw.config.land,
-		});
-
-		docs.push(operator);
-	}
-	for (const doc of docs) {
-		const variables = waw.mergeVariables(templateJson.variables, doc.variables);
-		if (variables) {
-			doc.variables = variables;
-			await doc.save();
-		}
-	}
-
 	waw.crud("operator", {
 		create: {
-			ensure: waw.role('admin', (req, res, next) => {
-				req.body.variables = templateJson.variables;
-				next();
-			})
+			ensure: waw.role("admin"),
 		},
-		get: [
-			{
-				ensure: waw.role("admin"),
-				query: () => {
-					return {};
-				}
+		get: {
+			ensure: waw.role("admin operator"),
+			query: (req) => {
+				return req.user.is.admin
+					? {}
+					: {
+							author: req.user._id,
+					  };
 			},
-			{
-				name: "operator",
-				ensure: waw.role("operator"),
-				query: (req) => {
-					return {
-						author: req.user._id
-					};
-				},
-			},
-		],
+		},
 		fetch: {
 			ensure: waw.role("admin"),
 			query: (req) => {
@@ -56,15 +28,20 @@ module.exports = async (waw) => {
 					return {
 						_id: req.body._id,
 					};
-				}
+				},
 			},
 			{
 				name: "operator",
-				ensure: waw.role("operator"),
+				ensure: waw.role("operator admin"),
 				query: (req) => {
-					return {
-						author: req.user._id
-					};
+					return req.user.is.admin
+						? {
+								_id: req.body._id,
+						  }
+						: {
+								_id: req.body._id,
+								author: req.user._id,
+						  };
 				},
 			},
 		],
@@ -75,6 +52,26 @@ module.exports = async (waw) => {
 					_id: req.body._id,
 				};
 			},
+		},
+	});
+
+	await waw.wait(2000);
+	waw.setUnique("subdomain", async (subdomain) => {
+		const operators = await waw.Operator.find({
+			domain: {
+				$exists: true,
+			},
+		}).select("domain");
+
+		for (const operator of operators) {
+			if (
+				!!(await waw.Operator.count({
+					domain: subdomain + "." + operator.domain,
+				}))
+			) {
+				return true;
+			}
 		}
+		return false;
 	});
 };

@@ -1,19 +1,36 @@
 {
 	"name": "Operator",
-	"crud": {
-		"get": ["", "operator"],
-		"unique": ["url"],
-		"update": [
-			{
-				"keys": ["name", "description", "data", "domain", "author", "theme"]
-			},
-			{
-				"name": "operator",
-				"keys": "variables"
-			}
-		],
-		"fetch": ["operator"],
-		"delete": [""]
-	},
+	"crud": [
+		{
+			"name": "operator",
+			"update": [
+				{
+					"keys": [
+						"name",
+						"description",
+						"data",
+						"domain",
+						"author",
+						"theme"
+					]
+				},
+				{
+					"name": "operator",
+					"keys": ["variables"]
+				}
+			],
+			"fetch": ["operator"],
+			"delete": [""]
+		},
+		{
+			"name": "operatorpage",
+			"update": [
+				{
+					"keys": ["name", "page", "url", "json", "data"]
+				}
+			],
+			"delete": [""]
+		}
+	],
 	"dependencies": {}
 }

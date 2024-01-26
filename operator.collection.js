@@ -6,6 +6,8 @@ module.exports = async function (waw) {
 		variables: {},
 		url: { type: String, sparse: true, trim: true, unique: true },
 		data: {},
+		json: [String],
+		pageJson: [String],
 		theme: {
 			type: waw.mongoose.Schema.Types.ObjectId,
 			ref: "Theme",
@@ -18,6 +20,8 @@ module.exports = async function (waw) {
 
 	Schema.methods.create = function (obj, user, waw) {
 		this.name = obj.name;
+		this.json = obj.json;
+		this.pageJson = obj.pageJson;
 		this.variables = obj.variables;
 		this.author = obj.author
 		this.description = obj.description;

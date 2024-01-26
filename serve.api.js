@@ -1,46 +1,52 @@
 const path = require("path");
 module.exports = async (waw) => {
-	const serveOperator = async (operator, _template) => {
+	const serveOperator = async (operator, templatePath) => {
 		console.log("serveOperator: ", operator.domain);
-
 		const templateJson = {
 			variables: operator.variables,
 			footer: {},
 			_page: {},
 		};
+		const _page = {};
+		let _pages = "";
 
-		if (waw.config.operator.json) {
-			await waw.processJson(waw.config.operator.json, operator, templateJson);
+		if (operator.json) {
+			await waw.processJson(operator.json, operator, templateJson);
 		}
 
-		const _page = {};
-		let _pages = "content";
-		const configurePage = (page) => {
-			page.pageJson = page.pageJson || {};
-
+		const configurePage = async (page) => {
+			page.data = page.data || {};
 			if (!(_pages + " ").includes(" " + page.page + " ")) {
-				_pages += " " + page.page;
+				_pages += (_pages ? " " : "") + page.page;
 			}
 
 			const callback = async (req, res) => {
+				operator.variables[page._id] = operator.variables[page._id] || {};
 				const json = {
 					...templateJson,
-					...page.pageJson,
+					...operator.variables[page._id],
 					title:
-						(operator.data && operator.data[page.page + "_name"] ||
-							page.pageJson.name ||
+						((operator.data &&
+							operator.data[page.page + "_name"]) ||
+							page.data.name ||
 							page.page) +
 						" | " +
 						operator.name,
 					description:
-						operator.data && operator.data[page.page + "_description"] ||
-						page.pageJson.description ||
+						(operator.data &&
+							operator.data[page.page + "_description"]) ||
+						page.data.description ||
 						operator.description ||
 						templateJson.description,
 				};
 
-				if (waw.config.operator.pageJson) {
-					await waw.processJson(waw.config.operator.json, operator, json, req);
+				if (operator.pageJson) {
+					await waw.processJson(
+						operator.pageJson,
+						operator,
+						json,
+						req
+					);
 				}
 
 				if (page.json) {
@@ -49,50 +55,30 @@ module.exports = async (waw) => {
 
 				res.send(
 					waw.render(
-						path.join(_template, "dist", page.page + ".html"),
+						path.join(templatePath, "dist", page.page + ".html"),
 						json,
 						waw.translate(req)
 					)
 				);
 			};
 
-			const urls = page.url.split(" ");
-			for (const url of urls) {
+			for (const url of page.url) {
 				_page[url] = callback;
 			}
 		};
-		for (const page of waw.config.operator.pages || []) {
-			configurePage(page);
-		}
-
-		const templatePageJson = (url, pageJson) => {
-			_page[url] = (req, res) => {
-				res.send(
-					waw.render(
-						path.join(_template, "dist", "content.html"),
-						{
-							...templateJson,
-							...pageJson,
-							title: pageJson.name + " | " + operator.name,
-							description:
-								pageJson.description ||
-								operator.description ||
-								templateJson.description,
-						},
-						waw.translate(req)
-					)
-				);
-			};
-		};
-
-		for (const url in templateJson._page) {
-			templatePageJson(url, templateJson._page[url]);
+		const pages = await waw.Operatorpage.find({
+			operator: operator._id,
+		});
+		for (const page of pages) {
+			if (page.page) {
+				configurePage(page);
+			}
 		}
 
 		waw.api({
 			domain: operator.domain,
 			template: {
-				path: _template,
+				path: templatePath,
 				prefix: "/" + operator.theme.folder,
 				pages: _pages,
 			},
@@ -106,15 +92,19 @@ module.exports = async (waw) => {
 			domain: {
 				$exists: true,
 			},
+			theme: {
+				$exists: true,
+			},
 		}
 	) => {
 		const operators = await waw.Operator.find(query).populate({
 			path: "theme",
 			select: "folder",
+			select: "folder repoFiles",
 		});
 
 		for (const operator of operators) {
-			if (operator.theme) {
+			if (operator.domain && operator.theme && operator.theme.repoFiles) {
 				serveOperator(
 					operator,
 					path.join(process.cwd(), "templates", operator.theme.folder)
@@ -126,28 +116,38 @@ module.exports = async (waw) => {
 
 	// manage SSL
 	const setOperator = async (operator) => {
-		if (waw.reserved(operator.domain)) {
-			return;
-		}
-
-		if (operator.theme) {
+		if (operator.domain && operator.theme) {
 			const _operator = await waw.Operator.findOne({
 				_id: operator._id,
 			}).populate({
 				path: "theme",
-				select: "folder",
+				select: "folder repoFiles",
 			});
 
-			const _template = path.join(
-				process.cwd(),
-				"templates",
-				_operator.theme.folder
-			);
+			if (operator.theme.repoFiles) {
+				const _template = path.join(
+					process.cwd(),
+					"templates",
+					_operator.theme.folder
+				);
 
-			serveOperator(_operator, _template);
+				serveOperator(_operator, _template);
+			}
 		}
 	};
-
 	waw.on("operator_create", setOperator);
 	waw.on("operator_update", setOperator);
+
+	const setOperatorByPage = async (operatorpage) => {
+		const operator = await waw.Operator.findOne({
+			_id: operatorpage.operator,
+		});
+
+		if (operator) {
+			setOperator(operator);
+		}
+	};
+	waw.on("operatorpage_create", setOperatorByPage);
+	waw.on("operatorpage_update", setOperatorByPage);
+	waw.on("operatorpage_delete", setOperatorByPage);
 };
