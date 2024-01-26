@@ -104,10 +104,7 @@ module.exports = async (waw) => {
 		query = {
 			domain: {
 				$exists: true,
-			},
-			theme: {
-				$exists: true,
-			},
+			}
 		}
 	) => {
 		const operators = await waw.Operator.find(query).populate({
