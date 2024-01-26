@@ -1,5 +1,18 @@
 const path = require("path");
 module.exports = async (waw) => {
+	const serveAppOperator = async (operator) => {
+		console.log("serveAppOperator: ", operator.domain);
+		waw.api({
+			domain: operator.domain,
+			app: path.join(
+				process.cwd(),
+				'client',
+				'dist',
+				'app',
+			)
+		});
+	}
+
 	const serveOperator = async (operator, templatePath) => {
 		console.log("serveOperator: ", operator.domain);
 		const templateJson = {
@@ -110,12 +123,19 @@ module.exports = async (waw) => {
 					path.join(process.cwd(), "templates", operator.theme.folder)
 				);
 			}
+			if (operator.domain) {
+				serveAppOperator(operator);
+			}
 		}
 	};
 	waw.loadOperators();
 
 	// manage SSL
 	const setOperator = async (operator) => {
+		if (operator.domain) {
+			serveAppOperator(operator);
+		}
+
 		if (operator.domain && operator.theme) {
 			const _operator = await waw.Operator.findOne({
 				_id: operator._id,
@@ -133,6 +153,7 @@ module.exports = async (waw) => {
 
 				serveOperator(_operator, _template);
 			}
+
 		}
 	};
 	waw.on("operator_create", setOperator);
