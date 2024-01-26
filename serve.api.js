@@ -117,7 +117,7 @@ module.exports = async (waw) => {
 			if (operator.domain && operator.theme && operator.theme.repoFiles) {
 				serveOperator(
 					operator,
-					path.join(process.cwd(), "templates", operator.theme.folder)
+					path.join(process.cwd(), "themes", operator.theme.folder)
 				);
 			}
 			if (operator.domain) {
