@@ -4,24 +4,22 @@ module.exports = async (waw) => {
 		console.log("serveAppOperator: ", operator.domain);
 		waw.api({
 			domain: operator.domain,
-			app: path.join(
-				process.cwd(),
-				'client',
-				'dist',
-				'app',
-			)
+			app: path.join(process.cwd(), "client", "dist", "app"),
 		});
-	}
+	};
 
 	const serveOperator = async (operator, templatePath) => {
 		console.log("serveOperator: ", operator.domain);
+		operator.variables = operator.variables || {};
+		operator.data = operator.data || {};
 		const templateJson = {
+			...waw.config,
 			variables: operator.variables,
+			operator,
 			footer: {},
 			_page: {},
 		};
 		const _page = {};
-		let _pages = "";
 
 		if (operator.json) {
 			await waw.processJson(operator.json, operator, templateJson);
@@ -29,28 +27,32 @@ module.exports = async (waw) => {
 
 		const configurePage = async (page) => {
 			page.data = page.data || {};
-			if (!(_pages + " ").includes(" " + page.page + " ")) {
-				_pages += (_pages ? " " : "") + page.page;
-			}
 
 			const callback = async (req, res) => {
-				operator.variables[page._id] = operator.variables[page._id] || {};
+				operator.variables[page._id] =
+					operator.variables[page._id] || {};
 				const json = {
 					...templateJson,
 					...operator.variables[page._id],
 					title:
-						((operator.data &&
-							operator.data[page.page + "_name"]) ||
-							page.data.name ||
+						(page.data["seo_title"] ||
+							operator.data[page.page + "_name"] ||
+							page.name ||
 							page.page) +
 						" | " +
 						operator.name,
 					description:
-						(operator.data &&
-							operator.data[page.page + "_description"]) ||
+						page.data["seo_description"] ||
+						operator.data[page.page + "_description"] ||
 						page.data.description ||
 						operator.description ||
 						templateJson.description,
+					image:
+						"https://" +
+						operator.domain +
+						(page.data["seo_thumb"] ||
+							operator.thumb ||
+							templateJson.thumb),
 				};
 
 				if (operator.pageJson) {
@@ -90,21 +92,20 @@ module.exports = async (waw) => {
 
 		waw.api({
 			domain: operator.domain,
-			template: {
-				path: templatePath,
-				prefix: "/" + operator.theme.folder,
-				pages: _pages,
-			},
 			page: _page,
 		});
 	};
+
+	if (!(await waw.Operator.count({ domain: waw.config.land }))) {
+		await waw.Operator.create({ domain: waw.config.land });
+	}
 
 	// manage operators
 	waw.loadOperators = async (
 		query = {
 			domain: {
 				$exists: true,
-			}
+			},
 		}
 	) => {
 		const operators = await waw.Operator.find(query).populate({
@@ -114,14 +115,14 @@ module.exports = async (waw) => {
 		});
 
 		for (const operator of operators) {
+			if (operator.domain) {
+				serveAppOperator(operator);
+			}
 			if (operator.domain && operator.theme && operator.theme.repoFiles) {
 				serveOperator(
 					operator,
-					path.join(process.cwd(), "themes", operator.theme.folder)
+					path.join(process.cwd(), "themes", operator.theme.id)
 				);
-			}
-			if (operator.domain) {
-				serveAppOperator(operator);
 			}
 		}
 	};
@@ -150,7 +151,6 @@ module.exports = async (waw) => {
 
 				serveOperator(_operator, _template);
 			}
-
 		}
 	};
 	waw.on("operator_create", setOperator);

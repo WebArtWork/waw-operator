@@ -2,11 +2,15 @@ module.exports = async (waw) => {
 	const addOperatorIds = async (req, res, next) => {
 		if (!req.user || (!req.user.is.admin && !req.user.is.operator)) {
 			res.json(false);
-		} else if (req.user.is.operator) {
+		} else {
 			req.operatorIds = (
-				await waw.Operator.find({
-					author: req.user._id,
-				}).select("_id")
+				await waw.Operator.find(
+					req.user.is.admin
+						? {}
+						: {
+								author: req.user._id,
+						  }
+				).select("_id")
 			).map((o) => o._id);
 			next();
 		}

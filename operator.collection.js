@@ -2,6 +2,7 @@ module.exports = async function (waw) {
 	const Schema = waw.mongoose.Schema({
 		name: String,
 		description: String,
+		thumb: String,
 		domain: String,
 		variables: {},
 		url: { type: String, sparse: true, trim: true, unique: true },
@@ -20,6 +21,7 @@ module.exports = async function (waw) {
 
 	Schema.methods.create = function (obj, user, waw) {
 		this.name = obj.name;
+		this.thumb = obj.thumb;
 		this.json = obj.json;
 		this.pageJson = obj.pageJson;
 		this.variables = obj.variables;
