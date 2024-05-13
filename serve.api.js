@@ -7,6 +7,13 @@ module.exports = async (waw) => {
 			app: path.join(process.cwd(), "client", "dist", "app"),
 		});
 	};
+	if (Array.isArray(waw.config.appOperators)) {
+		for (const domain of waw.config.appOperators) {
+			serveAppOperator({
+				domain,
+			});
+		}
+	}
 
 	const serveOperator = async (operator, templatePath) => {
 		console.log("serveOperator: ", operator.domain);
